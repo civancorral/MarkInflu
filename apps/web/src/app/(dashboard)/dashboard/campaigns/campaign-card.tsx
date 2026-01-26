@@ -25,8 +25,8 @@ interface CampaignCardProps {
 const statusConfig: Record<CampaignStatus, { label: string; class: string }> = {
   DRAFT: { label: 'Borrador', class: 'bg-muted text-muted-foreground' },
   PUBLISHED: { label: 'Publicada', class: 'bg-green-500/10 text-green-500' },
+  IN_PROGRESS: { label: 'En progreso', class: 'bg-purple-500/10 text-purple-500' },
   PAUSED: { label: 'Pausada', class: 'bg-yellow-500/10 text-yellow-500' },
-  CLOSED: { label: 'Cerrada', class: 'bg-muted text-muted-foreground' },
   COMPLETED: { label: 'Completada', class: 'bg-blue-500/10 text-blue-500' },
   CANCELLED: { label: 'Cancelada', class: 'bg-red-500/10 text-red-500' },
 };
@@ -139,7 +139,7 @@ export function CampaignCard({
           <div className="flex items-center gap-1">
             <DollarSign className="h-4 w-4" />
             <span>
-              {formatCurrency(campaign.budgetMin || 0)} - {formatCurrency(campaign.budgetMax)}
+              {formatCurrency(Number(campaign.budgetMin) || 0)} - {formatCurrency(Number(campaign.budgetMax))}
             </span>
           </div>
         )}

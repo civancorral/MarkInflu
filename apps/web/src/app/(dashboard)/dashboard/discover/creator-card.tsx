@@ -24,7 +24,7 @@ export function CreatorCard({ creator }: CreatorCardProps) {
   );
   
   const avgEngagement = creator.socialAccounts.length > 0
-    ? creator.socialAccounts.reduce((sum, acc) => sum + (acc.engagementRate || 0), 0) / 
+    ? creator.socialAccounts.reduce((sum, acc) => sum + (Number(acc.engagementRate) || 0), 0) /
       creator.socialAccounts.length
     : 0;
 
@@ -143,7 +143,7 @@ export function CreatorCard({ creator }: CreatorCardProps) {
             <p className="text-sm">
               <span className="text-muted-foreground">Desde </span>
               <span className="font-medium text-foreground">
-                {formatCurrency(creator.minimumBudget, creator.currency || 'USD')}
+                {formatCurrency(Number(creator.minimumBudget), creator.currency || 'USD')}
               </span>
             </p>
           )}

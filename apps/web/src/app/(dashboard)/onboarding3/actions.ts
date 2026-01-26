@@ -125,11 +125,9 @@ export async function createBrandProfile(userId: string, data: BrandProfileData)
       data: {
         userId,
         companyName: data.companyName,
-        description: data.description,
         website: data.website,
         industry: data.industry,
         companySize: data.companySize as any,
-        country: data.country,
       },
     });
 

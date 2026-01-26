@@ -259,7 +259,7 @@ export function CreatorOnboarding({ userId }: CreatorOnboardingProps) {
             })}
           </div>
           <p className="text-center text-gray-400 mt-4">
-            Paso {currentStep} de 4: {STEPS[currentStep - 1].title}
+            Paso {currentStep} de 4: {STEPS[currentStep - 1]?.title || ''}
           </p>
         </div>
 

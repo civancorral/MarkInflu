@@ -174,10 +174,10 @@ export function CampaignForm({ brandProfileId }: CampaignFormProps) {
     setIsLoading(true);
     try {
       const data = getValues();
-      const result = await createCampaign(brandProfileId, data, false);
-      
-      if (result.error) {
-        toast.error(result.error);
+      const result = await createCampaign(data);
+
+      if (!result.success) {
+        toast.error(result.error || 'Error al guardar la campaña');
         return;
       }
 
@@ -200,10 +200,18 @@ export function CampaignForm({ brandProfileId }: CampaignFormProps) {
     setIsLoading(true);
     try {
       const data = getValues();
-      const result = await createCampaign(brandProfileId, data, true);
-      
-      if (result.error) {
-        toast.error(result.error);
+      const result = await createCampaign(data);
+
+      if (!result.success || !result.data) {
+        toast.error(result.error || 'Error al crear la campaña');
+        return;
+      }
+
+      // Publish the campaign
+      const publishResult = await publishCampaign(result.data.id);
+
+      if (!publishResult.success) {
+        toast.error(publishResult.error || 'Error al publicar la campaña');
         return;
       }
 

@@ -233,7 +233,7 @@ export function CreatorOnboarding() {
 
       {/* Step Title */}
       <div className="text-center">
-        <h2 className="text-xl font-semibold">{STEPS[currentStep - 1].title}</h2>
+        <h2 className="text-xl font-semibold">{STEPS[currentStep - 1]?.title || ''}</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Paso {currentStep} de {STEPS.length}
         </p>

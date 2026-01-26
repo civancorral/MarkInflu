@@ -7,12 +7,19 @@
 - Layout y navegación
 - Onboarding de creadores
 - Sistema de autenticación
+- **FASE 1**: Oportunidades y Aplicaciones
+  - Vista de oportunidades con filtros
+  - Aplicación a campañas
+  - Vista de mis aplicaciones
+  - Retirar aplicaciones
+- **FASE 2**: Contratos y Entregables
+  - Vista de contratos activos
+  - Detalles de contrato con milestones
+  - Vista de entregables
+  - Upload de archivos (estructura base con react-dropzone)
+  - Historial de versiones
 
 ### 🚧 Rutas definidas pero sin implementar
-- `/dashboard/opportunities` - Descubrir campañas
-- `/dashboard/applications` - Mis aplicaciones
-- `/dashboard/contracts` - Contratos activos
-- `/dashboard/deliverables` - Entregables
 - `/dashboard/messages` - Mensajería
 - `/dashboard/earnings` - Ganancias
 - `/dashboard/analytics` - Estadísticas
@@ -22,18 +29,18 @@
 
 ## 🗓️ Plan de Desarrollo por Fases
 
-### **FASE 1: Oportunidades y Aplicaciones** 🎯
+### **FASE 1: Oportunidades y Aplicaciones** ✅ COMPLETADA
 **Prioridad:** ALTA | **Duración estimada:** 2-3 horas
 **Valor de negocio:** Permite a creadores descubrir y aplicar a campañas
 
 #### 1.1 Vista de Oportunidades (Descubrir Campañas)
-- [ ] Página `/dashboard/opportunities/page.tsx`
-- [ ] Componente de filtros (nicho, presupuesto, plataforma)
-- [ ] Grid de tarjetas de campañas disponibles
-- [ ] Vista detallada de campaña individual
-- [ ] Formulario de aplicación a campaña
-- [ ] API: `GET /api/campaigns` (filtrado por requisitos)
-- [ ] API: `POST /api/campaigns/[id]/apply`
+- [x] Página `/dashboard/opportunities/page.tsx`
+- [x] Componente de filtros (nicho, presupuesto, plataforma)
+- [x] Grid de tarjetas de campañas disponibles
+- [x] Vista detallada de campaña individual
+- [x] Formulario de aplicación a campaña
+- [x] API: `GET /api/campaigns` (filtrado por requisitos)
+- [x] API: `POST /api/campaigns/[id]/apply`
 
 **Archivos a crear:**
 ```
@@ -49,13 +56,13 @@ apps/web/src/app/api/campaigns/
 ```
 
 #### 1.2 Vista de Mis Aplicaciones
-- [ ] Página `/dashboard/applications/page.tsx`
-- [ ] Lista de aplicaciones enviadas
-- [ ] Estados: Pending, Under Review, Shortlisted, Hired, Rejected
-- [ ] Detalle de aplicación con timeline
-- [ ] Opción de retirar aplicación (withdraw)
-- [ ] API: `GET /api/applications/my-applications`
-- [ ] API: `PATCH /api/applications/[id]` (retirar)
+- [x] Página `/dashboard/applications/page.tsx`
+- [x] Lista de aplicaciones enviadas
+- [x] Estados: Pending, Under Review, Shortlisted, Hired, Rejected
+- [x] Detalle de aplicación con timeline
+- [x] Opción de retirar aplicación (withdraw)
+- [x] API: `GET /api/applications/my-applications`
+- [x] API: `PATCH /api/applications/[id]` (retirar)
 
 **Archivos a crear:**
 ```
@@ -73,20 +80,20 @@ apps/web/src/app/api/applications/
 
 ---
 
-### **FASE 2: Contratos y Entregables** 📝
+### **FASE 2: Contratos y Entregables** ✅ COMPLETADA
 **Prioridad:** ALTA | **Duración estimada:** 3-4 horas
 **Valor de negocio:** Core del workflow - gestión de trabajo activo
 
 #### 2.1 Vista de Contratos
-- [ ] Página `/dashboard/contracts/page.tsx`
-- [ ] Lista de contratos (Active, Completed, Cancelled)
-- [ ] Detalle de contrato con términos
-- [ ] Timeline de milestones (hitos de pago)
-- [ ] Estado de pagos por milestone
-- [ ] Documentos del contrato (PDF)
-- [ ] Chat integrado por contrato
-- [ ] API: `GET /api/contracts/my-contracts`
-- [ ] API: `GET /api/contracts/[id]`
+- [x] Página `/dashboard/contracts/page.tsx`
+- [x] Lista de contratos (Active, Completed, Cancelled)
+- [x] Detalle de contrato con términos
+- [x] Timeline de milestones (hitos de pago)
+- [x] Estado de pagos por milestone
+- [ ] Documentos del contrato (PDF) - Para implementar después
+- [ ] Chat integrado por contrato - Para implementar en Fase 5
+- [x] API: `GET /api/contracts/my-contracts`
+- [x] API: `GET /api/contracts/[id]`
 
 **Archivos a crear:**
 ```
@@ -104,16 +111,18 @@ apps/web/src/app/api/contracts/
 ```
 
 #### 2.2 Vista de Entregables
-- [ ] Página `/dashboard/deliverables/page.tsx`
-- [ ] Lista de entregables pendientes y completados
-- [ ] Upload de contenido (video/imagen)
-- [ ] Sistema de versiones (V1, V2, V3...)
-- [ ] Integración con Mux para videos
-- [ ] Sistema de comentarios visuales (timestamped)
-- [ ] Estado: Pending, Draft, In Review, Approved, Changes Requested
-- [ ] API: `GET /api/deliverables/my-deliverables`
-- [ ] API: `POST /api/deliverables/[id]/versions`
-- [ ] API: `GET /api/deliverables/[id]/comments`
+- [x] Página `/dashboard/deliverables/page.tsx`
+- [x] Lista de entregables pendientes y completados
+- [x] Upload de contenido (estructura base con react-dropzone)
+- [x] Sistema de versiones (V1, V2, V3...)
+- [ ] Integración con MinIO/S3 para uploads reales - Para implementar después
+- [ ] Integración con Mux para videos - Para implementar después
+- [x] Sistema de comentarios (estructura backend lista)
+- [x] Estado: Pending, Draft, In Review, Approved, Changes Requested
+- [x] API: `GET /api/deliverables/my-deliverables`
+- [x] API: `POST /api/deliverables/[id]/versions`
+- [x] API: `GET /api/deliverables/[id]`
+- [x] API: `PATCH /api/deliverables/[id]` (submit for review)
 
 **Archivos a crear:**
 ```

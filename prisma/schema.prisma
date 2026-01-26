@@ -1,0 +1,1370 @@
+// ============================================================================
+// MARKINFLU - PRISMA SCHEMA
+// Plataforma SaaS de Influencer Marketing
+// Version: 1.0.0
+// Stack: PostgreSQL + Prisma ORM
+// ============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// SECCIÓN 1: AUTENTICACIÓN Y USUARIOS (RBAC)
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  BRAND
+  CREATOR
+  AGENCY
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+model User {
+  id                String        @id @default(cuid())
+  email             String        @unique
+  emailVerified     DateTime?
+  passwordHash      String?
+  role              UserRole
+  status            AccountStatus @default(PENDING_VERIFICATION)
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  lastLoginAt       DateTime?
+  
+  // Relaciones de Perfil (Polimórficas)
+  brandProfile      BrandProfile?
+  creatorProfile    CreatorProfile?
+  agencyProfile     AgencyProfile?
+  
+  // Stripe Connect
+  stripeCustomerId      String?   @unique
+  stripeConnectId       String?   @unique  // Para creadores (recibir pagos)
+  stripeConnectStatus   StripeConnectStatus @default(NOT_CONNECTED)
+  
+  // Sesiones y Seguridad
+  sessions          Session[]
+  notifications     Notification[]
+  
+  // Mensajería
+  sentMessages      Message[]     @relation("SentMessages")
+  receivedMessages  Message[]     @relation("ReceivedMessages")
+  chatParticipants  ChatParticipant[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+enum StripeConnectStatus {
+  NOT_CONNECTED
+  PENDING
+  ACTIVE
+  RESTRICTED
+  DISABLED
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}
+
+// ============================================================================
+// SECCIÓN 2: PERFILES ESPECIALIZADOS
+// ============================================================================
+
+// ----- PERFIL DE MARCA -----
+model BrandProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Información Básica
+  companyName       String
+  legalName         String?
+  taxId             String?
+  industry          String[]
+  companySize       CompanySize?
+  website           String?
+  
+  // Branding
+  logoUrl           String?
+  brandColors       Json?    // { primary: "#xxx", secondary: "#xxx" }
+  
+  // Contacto
+  contactName       String?
+  contactEmail      String?
+  contactPhone      String?
+  address           Json?    // { street, city, state, country, zip }
+  
+  // Configuración de Facturación
+  billingEmail      String?
+  billingAddress    Json?
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relaciones
+  campaigns         Campaign[]
+  favorites         FavoriteCreator[]
+  
+  @@index([companyName])
+  @@index([industry])
+}
+
+enum CompanySize {
+  STARTUP       // 1-10
+  SMALL         // 11-50
+  MEDIUM        // 51-200
+  LARGE         // 201-1000
+  ENTERPRISE    // 1000+
+}
+
+// ----- PERFIL DE CREADOR (LA ESTRELLA) -----
+model CreatorProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Información Personal
+  displayName       String
+  firstName         String?
+  lastName          String?
+  bio               String?  @db.Text
+  tagline           String?  // "Lifestyle Creator | 500K+ Followers"
+  
+  // Demografía
+  location          String?
+  city              String?
+  country           String?
+  timezone          String?
+  languages         String[]
+  
+  // Nicho y Especialización
+  primaryNiche      String?
+  secondaryNiches   String[]
+  contentTypes      ContentType[]
+  
+  // Media
+  avatarUrl         String?
+  coverImageUrl     String?
+  portfolioUrls     String[]  // Links externos (MVP)
+  
+  // ===== TARIFAS (JSON Flexible) =====
+  // Estructura: { platform: { format: { price, currency, notes } } }
+  rates             Json?
+  // Ejemplo:
+  // {
+  //   "instagram": {
+  //     "story": { "price": 500, "currency": "USD" },
+  //     "reel": { "price": 1500, "currency": "USD" },
+  //     "post": { "price": 1000, "currency": "USD" },
+  //     "pack_3_stories": { "price": 1200, "currency": "USD", "notes": "24h destacadas" }
+  //   },
+  //   "tiktok": {
+  //     "video": { "price": 2000, "currency": "USD" }
+  //   }
+  // }
+  
+  minimumBudget     Decimal?  @db.Decimal(10, 2)
+  currency          String    @default("USD")
+  
+  // Disponibilidad
+  isAvailable       Boolean   @default(true)
+  availabilityNotes String?
+  
+  // Verificación
+  isVerified        Boolean   @default(false)
+  verifiedAt        DateTime?
+  
+  // Preferencias de Colaboración
+  preferredBrands   String[]  // Industrias preferidas
+  excludedBrands    String[]  // Industrias excluidas (ej: tabaco, alcohol)
+  
+  // SEO / Discovery
+  keywords          String[]
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relaciones
+  socialAccounts    SocialAccount[]
+  metricsSnapshots  MetricsSnapshot[]
+  applications      Application[]
+  deliverables      Deliverable[]
+  reviews           Review[]
+  favoritedBy       FavoriteCreator[]
+  
+  @@index([displayName])
+  @@index([primaryNiche])
+  @@index([location])
+  @@index([country])
+  @@index([isAvailable])
+  @@index([isVerified])
+  @@fulltext([bio, displayName, tagline])
+}
+
+enum ContentType {
+  PHOTO
+  VIDEO_SHORT      // Reels, TikToks, Shorts
+  VIDEO_LONG       // YouTube videos
+  STORY
+  LIVE_STREAM
+  PODCAST
+  BLOG_POST
+  THREAD           // Twitter/X threads
+  NEWSLETTER
+}
+
+// ----- PERFIL DE AGENCIA -----
+model AgencyProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  agencyName        String
+  website           String?
+  logoUrl           String?
+  description       String?  @db.Text
+  
+  // Roster de Creadores (managed externally o vinculados)
+  managedCreators   String[] // Array de CreatorProfile IDs
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([agencyName])
+}
+
+// ============================================================================
+// SECCIÓN 3: REDES SOCIALES Y MÉTRICAS
+// ============================================================================
+
+enum SocialPlatform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  TWITTER
+  FACEBOOK
+  LINKEDIN
+  PINTEREST
+  TWITCH
+  SNAPCHAT
+}
+
+model SocialAccount {
+  id                String         @id @default(cuid())
+  creatorProfileId  String
+  creatorProfile    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  
+  platform          SocialPlatform
+  username          String
+  profileUrl        String
+  
+  // OAuth (para V3 - conexión automática)
+  accessToken       String?        @db.Text
+  refreshToken      String?        @db.Text
+  tokenExpiresAt    DateTime?
+  isConnected       Boolean        @default(false)
+  
+  // Métricas Actuales (denormalizadas para queries rápidos)
+  followers         Int            @default(0)
+  following         Int            @default(0)
+  postsCount        Int            @default(0)
+  engagementRate    Decimal?       @db.Decimal(5, 2) // Porcentaje
+  avgLikes          Int?
+  avgComments       Int?
+  avgViews          Int?           // Para video platforms
+  
+  // Metadata
+  lastSyncAt        DateTime?
+  isVerified        Boolean        @default(false) // Verificado en la plataforma
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relaciones
+  metricsSnapshots  MetricsSnapshot[]
+  
+  @@unique([creatorProfileId, platform])
+  @@index([platform])
+  @@index([followers])
+  @@index([engagementRate])
+}
+
+// ----- HISTÓRICO DE MÉTRICAS (Snapshots) -----
+model MetricsSnapshot {
+  id                String         @id @default(cuid())
+  creatorProfileId  String
+  creatorProfile    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  socialAccountId   String?
+  socialAccount     SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  
+  // Período
+  snapshotDate      DateTime       @default(now())
+  periodType        SnapshotPeriod
+  
+  // Métricas
+  followers         Int
+  following         Int?
+  postsCount        Int?
+  engagementRate    Decimal?       @db.Decimal(5, 2)
+  avgLikes          Int?
+  avgComments       Int?
+  avgViews          Int?
+  avgShares         Int?
+  
+  // Crecimiento calculado
+  followerGrowth    Int?           // Diferencia vs snapshot anterior
+  growthPercentage  Decimal?       @db.Decimal(5, 2)
+  
+  // Demografía de Audiencia (V3)
+  audienceData      Json?
+  // Ejemplo:
+  // {
+  //   "gender": { "male": 45, "female": 52, "other": 3 },
+  //   "age": { "13-17": 5, "18-24": 35, "25-34": 40, "35-44": 15, "45+": 5 },
+  //   "topCountries": [{ "code": "US", "percentage": 40 }, ...],
+  //   "topCities": [{ "name": "Los Angeles", "percentage": 15 }, ...]
+  // }
+  
+  createdAt         DateTime       @default(now())
+  
+  @@index([creatorProfileId, snapshotDate])
+  @@index([socialAccountId, snapshotDate])
+  @@index([snapshotDate])
+}
+
+enum SnapshotPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// ============================================================================
+// SECCIÓN 4: CAMPAÑAS Y APLICACIONES
+// ============================================================================
+
+enum CampaignStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  PAUSED
+}
+
+enum CampaignVisibility {
+  PUBLIC           // Cualquier creador puede ver y aplicar
+  INVITE_ONLY      // Solo creadores invitados
+  PRIVATE          // Solo visible para la marca
+}
+
+model Campaign {
+  id                String           @id @default(cuid())
+  brandProfileId    String
+  brandProfile      BrandProfile     @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+  
+  // Información Básica
+  title             String
+  slug              String           @unique
+  description       String           @db.Text
+  
+  // Brief Detallado
+  brief             Json?
+  // Estructura del Brief:
+  // {
+  //   "objective": "Brand Awareness | Sales | Engagement",
+  //   "keyMessages": ["mensaje1", "mensaje2"],
+  //   "dos": ["hacer esto", "mostrar producto"],
+  //   "donts": ["no mencionar competencia"],
+  //   "hashtags": ["#ad", "#sponsored"],
+  //   "mentions": ["@brand"],
+  //   "referenceLinks": ["url1", "url2"],
+  //   "moodboard": ["imageUrl1", "imageUrl2"]
+  // }
+  
+  // Requisitos del Creador
+  requirements      Json?
+  // {
+  //   "minFollowers": 10000,
+  //   "maxFollowers": null,
+  //   "platforms": ["INSTAGRAM", "TIKTOK"],
+  //   "niches": ["lifestyle", "fashion"],
+  //   "countries": ["US", "MX"],
+  //   "languages": ["es", "en"],
+  //   "minEngagementRate": 3.5,
+  //   "ageRange": { "min": 21, "max": null },
+  //   "verifiedOnly": false
+  // }
+  
+  // Entregables Requeridos
+  deliverableSpecs  Json?
+  // {
+  //   "items": [
+  //     { "type": "REEL", "quantity": 2, "duration": "30-60s", "deadline": "2024-02-15" },
+  //     { "type": "STORY", "quantity": 3, "notes": "Con swipe up" }
+  //   ]
+  // }
+  
+  // Presupuesto
+  budgetMin         Decimal?         @db.Decimal(10, 2)
+  budgetMax         Decimal?         @db.Decimal(10, 2)
+  budgetType        BudgetType       @default(TOTAL)
+  currency          String           @default("USD")
+  
+  // Fechas
+  applicationDeadline DateTime?
+  startDate         DateTime?
+  endDate           DateTime?
+  
+  // Estado y Visibilidad
+  status            CampaignStatus   @default(DRAFT)
+  visibility        CampaignVisibility @default(PUBLIC)
+  
+  // Slots
+  maxCreators       Int              @default(1)
+  currentCreators   Int              @default(0)
+  
+  // Media
+  coverImageUrl     String?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  publishedAt       DateTime?
+  
+  // Relaciones
+  applications      Application[]
+  contracts         Contract[]
+  invitations       CampaignInvitation[]
+  
+  @@index([brandProfileId])
+  @@index([status])
+  @@index([visibility])
+  @@index([applicationDeadline])
+  @@fulltext([title, description])
+}
+
+enum BudgetType {
+  TOTAL            // Presupuesto total para toda la campaña
+  PER_CREATOR      // Presupuesto por creador
+  NEGOTIABLE       // Abierto a propuestas
+}
+
+// ----- INVITACIONES A CAMPAÑAS PRIVADAS -----
+model CampaignInvitation {
+  id                String         @id @default(cuid())
+  campaignId        String
+  campaign          Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorProfileId  String
+  
+  status            InvitationStatus @default(PENDING)
+  message           String?        @db.Text
+  sentAt            DateTime       @default(now())
+  respondedAt       DateTime?
+  
+  @@unique([campaignId, creatorProfileId])
+  @@index([creatorProfileId])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+// ----- APLICACIONES DE CREADORES -----
+model Application {
+  id                String           @id @default(cuid())
+  campaignId        String
+  campaign          Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorProfileId  String
+  creatorProfile    CreatorProfile   @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  
+  // Estado del Workflow
+  status            ApplicationStatus @default(APPLIED)
+  
+  // Propuesta del Creador
+  proposedRate      Decimal?         @db.Decimal(10, 2)
+  currency          String           @default("USD")
+  pitch             String?          @db.Text  // Por qué debería ser elegido
+  
+  // Propuesta Detallada
+  proposal          Json?
+  // {
+  //   "deliverables": [
+  //     { "type": "REEL", "quantity": 2, "price": 1000 },
+  //     { "type": "STORY", "quantity": 3, "price": 300 }
+  //   ],
+  //   "totalPrice": 1300,
+  //   "timeline": "2 semanas",
+  //   "notes": "Incluye 1 revisión por entregable"
+  // }
+  
+  // Portfolio/Referencias específicas
+  portfolioLinks    String[]
+  
+  // Timestamps de Estado
+  appliedAt         DateTime         @default(now())
+  shortlistedAt     DateTime?
+  rejectedAt        DateTime?
+  hiredAt           DateTime?
+  
+  // Notas internas (solo marca)
+  internalNotes     String?          @db.Text
+  rejectionReason   String?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  // Relaciones
+  contract          Contract?
+  
+  @@unique([campaignId, creatorProfileId])
+  @@index([campaignId])
+  @@index([creatorProfileId])
+  @@index([status])
+}
+
+enum ApplicationStatus {
+  APPLIED           // Aplicación recibida
+  UNDER_REVIEW      // En revisión
+  SHORTLISTED       // Preseleccionado
+  REJECTED          // Rechazado
+  HIRED             // Contratado
+  WITHDRAWN         // Retirado por el creador
+}
+
+// ============================================================================
+// SECCIÓN 5: CONTRATOS Y ENTREGABLES
+// ============================================================================
+
+enum ContractStatus {
+  DRAFT
+  PENDING_CREATOR_SIGNATURE
+  PENDING_BRAND_SIGNATURE
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+model Contract {
+  id                String         @id @default(cuid())
+  campaignId        String
+  campaign          Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  applicationId     String         @unique
+  application       Application    @relation(fields: [applicationId], references: [id])
+  
+  // Partes
+  brandUserId       String
+  creatorUserId     String
+  
+  // Términos
+  contractNumber    String         @unique
+  terms             Json
+  // {
+  //   "deliverables": [...],
+  //   "totalAmount": 1500,
+  //   "currency": "USD",
+  //   "paymentTerms": "50% upfront, 50% on approval",
+  //   "revisionPolicy": "2 revisions included",
+  //   "usageRights": "Perpetual, worldwide, all platforms",
+  //   "exclusivity": { "period": "30 days", "competitors": ["brand1", "brand2"] },
+  //   "cancellationPolicy": "..."
+  // }
+  
+  totalAmount       Decimal        @db.Decimal(10, 2)
+  currency          String         @default("USD")
+  
+  // Firmas
+  status            ContractStatus @default(DRAFT)
+  brandSignedAt     DateTime?
+  creatorSignedAt   DateTime?
+  
+  // Fechas
+  startDate         DateTime?
+  endDate           DateTime?
+  
+  // Documentos
+  documentUrl       String?        // PDF generado
+  
+  // Timestamps
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relaciones
+  milestones        Milestone[]
+  deliverables      Deliverable[]
+  escrowTransaction EscrowTransaction?
+  disputes          Dispute[]
+  
+  @@index([campaignId])
+  @@index([brandUserId])
+  @@index([creatorUserId])
+  @@index([status])
+}
+
+// ----- HITOS DE PAGO -----
+model Milestone {
+  id                String         @id @default(cuid())
+  contractId        String
+  contract          Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  
+  title             String
+  description       String?
+  
+  // Monto
+  amount            Decimal        @db.Decimal(10, 2)
+  percentage        Decimal?       @db.Decimal(5, 2) // % del total
+  
+  // Estado
+  status            MilestoneStatus @default(PENDING)
+  
+  // Condiciones
+  triggerType       MilestoneTrigger
+  triggerCondition  Json?
+  // Ejemplos:
+  // { "type": "CONTRACT_SIGNED" }
+  // { "type": "DELIVERABLE_APPROVED", "deliverableIds": ["xxx"] }
+  // { "type": "DATE_REACHED", "date": "2024-02-15" }
+  // { "type": "MANUAL" }
+  
+  // Fechas
+  dueDate           DateTime?
+  completedAt       DateTime?
+  paidAt            DateTime?
+  
+  // Orden
+  orderIndex        Int            @default(0)
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relaciones
+  payment           Payment?
+  
+  @@index([contractId])
+  @@index([status])
+}
+
+enum MilestoneStatus {
+  PENDING           // Esperando condición
+  READY             // Condición cumplida, listo para pago
+  PROCESSING        // Pago en proceso
+  PAID              // Pagado
+  CANCELLED         // Cancelado
+}
+
+enum MilestoneTrigger {
+  CONTRACT_SIGNED
+  DELIVERABLE_APPROVED
+  ALL_DELIVERABLES_APPROVED
+  DATE_REACHED
+  MANUAL            // Liberación manual por la marca
+}
+
+// ----- ENTREGABLES -----
+enum DeliverableStatus {
+  PENDING           // Esperando upload
+  DRAFT             // Borrador subido
+  IN_REVIEW         // En revisión por marca
+  CHANGES_REQUESTED // Requiere cambios
+  APPROVED          // Aprobado
+  PUBLISHED         // Publicado (contenido live)
+  REJECTED          // Rechazado definitivamente
+}
+
+model Deliverable {
+  id                String           @id @default(cuid())
+  contractId        String
+  contract          Contract         @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  creatorProfileId  String
+  creatorProfile    CreatorProfile   @relation(fields: [creatorProfileId], references: [id])
+  
+  // Especificación
+  title             String
+  description       String?
+  type              ContentType
+  specifications    Json?
+  // {
+  //   "duration": "30-60s",
+  //   "aspectRatio": "9:16",
+  //   "platform": "INSTAGRAM",
+  //   "format": "REEL"
+  // }
+  
+  // Estado
+  status            DeliverableStatus @default(PENDING)
+  
+  // Fechas
+  dueDate           DateTime?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  publishedAt       DateTime?
+  publishedUrl      String?          // Link al contenido publicado
+  
+  // Versión actual
+  currentVersionId  String?
+  
+  // Orden
+  orderIndex        Int              @default(0)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  // Relaciones
+  versions          DeliverableVersion[]
+  
+  @@index([contractId])
+  @@index([creatorProfileId])
+  @@index([status])
+}
+
+// ----- VERSIONES DE ENTREGABLES (V1, V2, etc.) -----
+model DeliverableVersion {
+  id                String       @id @default(cuid())
+  deliverableId     String
+  deliverable       Deliverable  @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  
+  // Versión
+  versionNumber     Int
+  
+  // Archivo
+  fileUrl           String
+  fileName          String
+  fileSize          Int          // bytes
+  mimeType          String
+  
+  // Video específico (Mux/Cloudinary)
+  videoProvider     VideoProvider?
+  videoAssetId      String?      // Mux Asset ID o Cloudinary Public ID
+  videoPlaybackId   String?      // Mux Playback ID
+  videoDuration     Float?       // segundos
+  videoThumbnailUrl String?
+  videoStatus       VideoStatus? @default(PROCESSING)
+  
+  // Metadata
+  metadata          Json?
+  // {
+  //   "width": 1080,
+  //   "height": 1920,
+  //   "duration": 32.5,
+  //   "codec": "h264",
+  //   "bitrate": 8000000
+  // }
+  
+  // Estado de esta versión
+  status            VersionStatus @default(SUBMITTED)
+  
+  // Notas del creador
+  creatorNotes      String?      @db.Text
+  
+  // Timestamps
+  submittedAt       DateTime     @default(now())
+  reviewedAt        DateTime?
+  
+  // Relaciones
+  visualComments    VisualComment[]
+  
+  @@unique([deliverableId, versionNumber])
+  @@index([deliverableId])
+  @@index([videoAssetId])
+}
+
+enum VideoProvider {
+  MUX
+  CLOUDINARY
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  ERROR
+}
+
+enum VersionStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  SUPERSEDED       // Reemplazado por nueva versión
+}
+
+// ============================================================================
+// SECCIÓN 6: SISTEMA DE REVISIÓN VISUAL (KILLER FEATURE)
+// ============================================================================
+
+model VisualComment {
+  id                    String             @id @default(cuid())
+  deliverableVersionId  String
+  deliverableVersion    DeliverableVersion @relation(fields: [deliverableVersionId], references: [id], onDelete: Cascade)
+  
+  // Autor
+  authorUserId          String
+  
+  // Posición Temporal (para video)
+  timestamp             Float?             // Segundos (ej: 15.5 = 0:15.5)
+  
+  // Posición Espacial (coordenadas normalizadas 0-1)
+  coordinateX           Float?             // 0 = izquierda, 1 = derecha
+  coordinateY           Float?             // 0 = arriba, 1 = abajo
+  
+  // Para anotaciones de área/dibujo
+  annotationType        AnnotationType     @default(POINT)
+  annotationData        Json?
+  // Para POINT: null o {}
+  // Para RECTANGLE: { "width": 0.1, "height": 0.05 }
+  // Para FREEHAND: { "path": [[x1,y1], [x2,y2], ...] }
+  // Para ARROW: { "endX": 0.5, "endY": 0.3 }
+  
+  // Contenido
+  text                  String             @db.Text
+  
+  // Estado
+  isResolved            Boolean            @default(false)
+  resolvedAt            DateTime?
+  resolvedByUserId      String?
+  
+  // Prioridad/Tipo
+  commentType           CommentType        @default(FEEDBACK)
+  priority              CommentPriority    @default(NORMAL)
+  
+  // Threading
+  parentCommentId       String?
+  parentComment         VisualComment?     @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies               VisualComment[]    @relation("CommentReplies")
+  
+  // Timestamps
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  
+  @@index([deliverableVersionId])
+  @@index([authorUserId])
+  @@index([timestamp])
+  @@index([isResolved])
+  @@index([parentCommentId])
+}
+
+enum AnnotationType {
+  POINT
+  RECTANGLE
+  FREEHAND
+  ARROW
+  CIRCLE
+}
+
+enum CommentType {
+  FEEDBACK          // Comentario general
+  CHANGE_REQUEST    // Solicitud de cambio
+  APPROVAL          // Aprobación
+  QUESTION          // Pregunta
+}
+
+enum CommentPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+// ============================================================================
+// SECCIÓN 7: SISTEMA FINANCIERO (ESCROW)
+// ============================================================================
+
+enum EscrowStatus {
+  PENDING_DEPOSIT    // Esperando depósito de la marca
+  FUNDED             // Fondos depositados y retenidos
+  PARTIALLY_RELEASED // Algunos hitos pagados
+  FULLY_RELEASED     // Todos los fondos liberados
+  REFUNDED           // Reembolsado a la marca
+  DISPUTED           // En disputa
+  CANCELLED          // Cancelado
+}
+
+model EscrowTransaction {
+  id                String       @id @default(cuid())
+  contractId        String       @unique
+  contract          Contract     @relation(fields: [contractId], references: [id])
+  
+  // Partes
+  brandUserId       String
+  creatorUserId     String
+  
+  // Montos
+  totalAmount       Decimal      @db.Decimal(10, 2)
+  releasedAmount    Decimal      @db.Decimal(10, 2) @default(0)
+  refundedAmount    Decimal      @db.Decimal(10, 2) @default(0)
+  platformFee       Decimal      @db.Decimal(10, 2) @default(0)
+  currency          String       @default("USD")
+  
+  // Estado
+  status            EscrowStatus @default(PENDING_DEPOSIT)
+  
+  // Stripe
+  stripePaymentIntentId    String?  @unique
+  stripeTransferId         String?  // Para pagos al creador
+  
+  // Fechas
+  fundedAt          DateTime?
+  releasedAt        DateTime?    // Última liberación
+  refundedAt        DateTime?
+  
+  // Timestamps
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  // Relaciones
+  payments          Payment[]
+  
+  @@index([brandUserId])
+  @@index([creatorUserId])
+  @@index([status])
+}
+
+// ----- PAGOS INDIVIDUALES -----
+model Payment {
+  id                    String            @id @default(cuid())
+  escrowTransactionId   String
+  escrowTransaction     EscrowTransaction @relation(fields: [escrowTransactionId], references: [id])
+  milestoneId           String?           @unique
+  milestone             Milestone?        @relation(fields: [milestoneId], references: [id])
+  
+  // Destinatario
+  recipientUserId       String
+  
+  // Monto
+  amount                Decimal           @db.Decimal(10, 2)
+  platformFee           Decimal           @db.Decimal(10, 2) @default(0)
+  netAmount             Decimal           @db.Decimal(10, 2) // amount - platformFee
+  currency              String            @default("USD")
+  
+  // Estado
+  status                PaymentStatus     @default(PENDING)
+  
+  // Stripe
+  stripeTransferId      String?           @unique
+  stripePayoutId        String?
+  
+  // Tipo
+  type                  PaymentType
+  
+  // Timestamps
+  initiatedAt           DateTime          @default(now())
+  completedAt           DateTime?
+  failedAt              DateTime?
+  
+  // Error info
+  failureReason         String?
+  
+  @@index([escrowTransactionId])
+  @@index([recipientUserId])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  MILESTONE_RELEASE     // Liberación de hito
+  BONUS                 // Pago adicional
+  REFUND                // Reembolso
+  DISPUTE_RESOLUTION    // Resolución de disputa
+}
+
+// ============================================================================
+// SECCIÓN 8: DISPUTAS
+// ============================================================================
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  PENDING_EVIDENCE
+  RESOLVED_BRAND_FAVOR
+  RESOLVED_CREATOR_FAVOR
+  RESOLVED_SPLIT
+  CLOSED
+}
+
+model Dispute {
+  id                String        @id @default(cuid())
+  contractId        String
+  contract          Contract      @relation(fields: [contractId], references: [id])
+  
+  // Partes
+  initiatorUserId   String
+  respondentUserId  String
+  
+  // Detalles
+  reason            DisputeReason
+  description       String        @db.Text
+  
+  // Estado
+  status            DisputeStatus @default(OPEN)
+  
+  // Resolución
+  resolution        String?       @db.Text
+  resolvedByUserId  String?
+  resolvedAt        DateTime?
+  
+  // Monto en disputa
+  disputedAmount    Decimal       @db.Decimal(10, 2)
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // Relaciones
+  evidence          DisputeEvidence[]
+  
+  @@index([contractId])
+  @@index([status])
+}
+
+enum DisputeReason {
+  DELIVERABLE_QUALITY
+  MISSED_DEADLINE
+  CONTRACT_VIOLATION
+  PAYMENT_ISSUE
+  COMMUNICATION_BREAKDOWN
+  SCOPE_DISAGREEMENT
+  OTHER
+}
+
+model DisputeEvidence {
+  id                String   @id @default(cuid())
+  disputeId         String
+  dispute           Dispute  @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  
+  submittedByUserId String
+  
+  title             String
+  description       String?  @db.Text
+  fileUrl           String?
+  
+  createdAt         DateTime @default(now())
+  
+  @@index([disputeId])
+}
+
+// ============================================================================
+// SECCIÓN 9: MENSAJERÍA Y NOTIFICACIONES
+// ============================================================================
+
+model Chat {
+  id                String            @id @default(cuid())
+  
+  // Tipo de chat
+  type              ChatType          @default(DIRECT)
+  
+  // Para chats de campaña/contrato
+  campaignId        String?
+  contractId        String?
+  
+  // Metadata
+  title             String?
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lastMessageAt     DateTime?
+  
+  // Relaciones
+  participants      ChatParticipant[]
+  messages          Message[]
+  
+  @@index([campaignId])
+  @@index([contractId])
+}
+
+enum ChatType {
+  DIRECT            // 1:1
+  CAMPAIGN          // Chat de campaña (múltiples participantes)
+  CONTRACT          // Chat específico de contrato
+  SUPPORT           // Soporte de plataforma
+}
+
+model ChatParticipant {
+  id                String   @id @default(cuid())
+  chatId            String
+  chat              Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Estado
+  isActive          Boolean  @default(true)
+  mutedUntil        DateTime?
+  
+  // Lectura
+  lastReadAt        DateTime?
+  unreadCount       Int      @default(0)
+  
+  // Timestamps
+  joinedAt          DateTime @default(now())
+  leftAt            DateTime?
+  
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id                String      @id @default(cuid())
+  chatId            String
+  chat              Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  // Autor
+  senderUserId      String
+  sender            User        @relation("SentMessages", fields: [senderUserId], references: [id])
+  
+  // Contenido
+  content           String      @db.Text
+  contentType       MessageContentType @default(TEXT)
+  
+  // Archivos adjuntos
+  attachments       Json?
+  // [{ "url": "...", "name": "...", "type": "image/png", "size": 12345 }]
+  
+  // Metadata
+  metadata          Json?
+  // Para mensajes del sistema: { "type": "CONTRACT_SIGNED", "contractId": "..." }
+  
+  // Estado
+  isEdited          Boolean     @default(false)
+  isDeleted         Boolean     @default(false)
+  
+  // Threading
+  replyToMessageId  String?
+  replyToMessage    Message?    @relation("MessageReplies", fields: [replyToMessageId], references: [id])
+  replies           Message[]   @relation("MessageReplies")
+  
+  // Lectura
+  recipientUserId   String?     // Para DMs
+  recipient         User?       @relation("ReceivedMessages", fields: [recipientUserId], references: [id])
+  readAt            DateTime?
+  
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@index([chatId])
+  @@index([senderUserId])
+  @@index([createdAt])
+}
+
+enum MessageContentType {
+  TEXT
+  IMAGE
+  FILE
+  VIDEO
+  AUDIO
+  SYSTEM           // Mensajes automáticos del sistema
+}
+
+// ----- NOTIFICACIONES -----
+model Notification {
+  id                String           @id @default(cuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Contenido
+  type              NotificationType
+  title             String
+  body              String
+  
+  // Referencia
+  referenceType     String?          // "Campaign", "Contract", "Message", etc.
+  referenceId       String?
+  
+  // Link de acción
+  actionUrl         String?
+  
+  // Estado
+  isRead            Boolean          @default(false)
+  readAt            DateTime?
+  
+  // Entrega
+  emailSent         Boolean          @default(false)
+  pushSent          Boolean          @default(false)
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  // Campañas
+  CAMPAIGN_PUBLISHED
+  CAMPAIGN_INVITATION
+  APPLICATION_RECEIVED
+  APPLICATION_SHORTLISTED
+  APPLICATION_REJECTED
+  APPLICATION_HIRED
+  
+  // Contratos
+  CONTRACT_CREATED
+  CONTRACT_SIGNED
+  CONTRACT_COMPLETED
+  
+  // Entregables
+  DELIVERABLE_SUBMITTED
+  DELIVERABLE_APPROVED
+  DELIVERABLE_CHANGES_REQUESTED
+  VISUAL_COMMENT_ADDED
+  VISUAL_COMMENT_RESOLVED
+  
+  // Pagos
+  PAYMENT_RECEIVED
+  PAYMENT_RELEASED
+  ESCROW_FUNDED
+  
+  // Mensajes
+  NEW_MESSAGE
+  
+  // Disputas
+  DISPUTE_OPENED
+  DISPUTE_RESOLVED
+  
+  // Sistema
+  ACCOUNT_VERIFIED
+  STRIPE_CONNECTED
+}
+
+// ============================================================================
+// SECCIÓN 10: REVIEWS Y REPUTACIÓN
+// ============================================================================
+
+model Review {
+  id                String         @id @default(cuid())
+  
+  // Quién hace la review
+  reviewerUserId    String
+  reviewerRole      UserRole
+  
+  // A quién se hace la review
+  creatorProfileId  String?
+  creatorProfile    CreatorProfile? @relation(fields: [creatorProfileId], references: [id])
+  brandProfileId    String?
+  
+  // Contrato relacionado
+  contractId        String
+  
+  // Ratings (1-5)
+  overallRating     Int
+  communicationRating Int?
+  qualityRating     Int?
+  timelinessRating  Int?
+  professionalismRating Int?
+  
+  // Contenido
+  title             String?
+  comment           String?        @db.Text
+  
+  // Respuesta
+  response          String?        @db.Text
+  respondedAt       DateTime?
+  
+  // Visibilidad
+  isPublic          Boolean        @default(true)
+  
+  // Timestamps
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@unique([reviewerUserId, contractId])
+  @@index([creatorProfileId])
+  @@index([brandProfileId])
+  @@index([overallRating])
+}
+
+// ============================================================================
+// SECCIÓN 11: FAVORITOS Y LISTAS
+// ============================================================================
+
+model FavoriteCreator {
+  id                String         @id @default(cuid())
+  brandProfileId    String
+  brandProfile      BrandProfile   @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+  creatorProfileId  String
+  creatorProfile    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  
+  // Organización
+  listName          String?        // Para crear listas personalizadas
+  notes             String?
+  
+  createdAt         DateTime       @default(now())
+  
+  @@unique([brandProfileId, creatorProfileId])
+  @@index([brandProfileId])
+  @@index([creatorProfileId])
+}
+
+// ============================================================================
+// SECCIÓN 12: AUDIT LOG (Para compliance y debugging)
+// ============================================================================
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  
+  // Actor
+  userId            String?
+  userEmail         String?
+  userRole          UserRole?
+  
+  // Acción
+  action            String   // "CREATE", "UPDATE", "DELETE", etc.
+  entityType        String   // "Campaign", "Contract", etc.
+  entityId          String
+  
+  // Detalles
+  changes           Json?    // { "field": { "old": x, "new": y } }
+  metadata          Json?
+  
+  // Request info
+  ipAddress         String?
+  userAgent         String?
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}

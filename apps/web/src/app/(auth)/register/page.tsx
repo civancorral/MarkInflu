@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
+import { Suspense } from 'react';
 import { RegisterForm } from './register-form';
 
 export const metadata: Metadata = {
@@ -35,7 +36,9 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            <RegisterForm />
+            <Suspense fallback={null}>
+              <RegisterForm />
+            </Suspense>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
               ¿Ya tienes cuenta?{' '}

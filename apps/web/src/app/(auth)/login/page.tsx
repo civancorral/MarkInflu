@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
+import { Suspense } from 'react';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = {
@@ -35,7 +36,9 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <LoginForm />
+            <Suspense fallback={null}>
+              <LoginForm />
+            </Suspense>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
               ¿No tienes cuenta?{' '}

@@ -46,11 +46,11 @@ export class InstagramService {
     const url = `${this.graphUrl}/${igUserId}?fields=followers_count,follows_count,media_count,biography,username,profile_picture_url&access_token=${accessToken}`;
     const res = await fetch(url);
     if (!res.ok) {
-      const err = await res.json();
+      const err: any = await res.json();
       this.logger.error('Instagram getMetrics error', err);
       throw new Error(err.error?.message || 'Failed to fetch Instagram metrics');
     }
-    const data = await res.json();
+    const data: any = await res.json();
     return {
       followers: data.followers_count || 0,
       following: data.follows_count || 0,
@@ -69,7 +69,7 @@ export class InstagramService {
       let impressions = 0;
       let reach = 0;
       if (metricsRes.ok) {
-        const metricsData = await metricsRes.json();
+        const metricsData: any = await metricsRes.json();
         for (const metric of metricsData.data || []) {
           const values = metric.values || [];
           const total = values.reduce((sum: number, v: any) => sum + (v.value || 0), 0);
@@ -83,7 +83,7 @@ export class InstagramService {
       const demoRes = await fetch(demoUrl);
       let followerDemographics: InstagramInsights['followerDemographics'];
       if (demoRes.ok) {
-        const demoData = await demoRes.json();
+        const demoData: any = await demoRes.json();
         followerDemographics = this.parseDemographics(demoData.data || []);
       }
 
@@ -99,7 +99,7 @@ export class InstagramService {
       const url = `${this.graphUrl}/${igUserId}/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count&limit=${limit}&access_token=${accessToken}`;
       const res = await fetch(url);
       if (!res.ok) return [];
-      const data = await res.json();
+      const data: any = await res.json();
 
       const media: InstagramMedia[] = (data.data || []).map((m: any) => ({
         id: m.id,
@@ -127,7 +127,7 @@ export class InstagramService {
       const url = `${this.graphUrl}/oauth/access_token?grant_type=fb_exchange_token&client_id=${this.configService.get('FACEBOOK_APP_ID')}&client_secret=${this.configService.get('FACEBOOK_APP_SECRET')}&fb_exchange_token=${accessToken}`;
       const res = await fetch(url);
       if (!res.ok) return null;
-      const data = await res.json();
+      const data: any = await res.json();
       return { token: data.access_token, expiresIn: data.expires_in };
     } catch {
       return null;

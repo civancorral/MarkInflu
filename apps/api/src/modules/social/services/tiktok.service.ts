@@ -38,11 +38,11 @@ export class TikTokService {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) {
-      const err = await res.json();
+      const err: any = await res.json();
       this.logger.error('TikTok getMetrics error', err);
       throw new Error(err.error?.message || 'Failed to fetch TikTok metrics');
     }
-    const data = await res.json();
+    const data: any = await res.json();
     const user = data.data?.user;
     if (!user) throw new Error('No TikTok user data found');
 
@@ -70,7 +70,7 @@ export class TikTokService {
         body: JSON.stringify({ max_count: maxCount }),
       });
       if (!res.ok) return [];
-      const data = await res.json();
+      const data: any = await res.json();
 
       const videos: TikTokVideo[] = (data.data?.videos || []).map((v: any) => ({
         id: v.id,
@@ -113,7 +113,7 @@ export class TikTokService {
         }),
       });
       if (!res.ok) return null;
-      const data = await res.json();
+      const data: any = await res.json();
       return {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,

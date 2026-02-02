@@ -37,11 +37,11 @@ export class YouTubeService {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) {
-      const err = await res.json();
+      const err: any = await res.json();
       this.logger.error('YouTube getMetrics error', err);
       throw new Error(err.error?.message || 'Failed to fetch YouTube metrics');
     }
-    const data = await res.json();
+    const data: any = await res.json();
     const channel = data.items?.[0];
     if (!channel) throw new Error('No YouTube channel found');
 
@@ -65,7 +65,7 @@ export class YouTubeService {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!searchRes.ok) return [];
-      const searchData = await searchRes.json();
+      const searchData: any = await searchRes.json();
 
       const videoIds = (searchData.items || []).map((i: any) => i.id?.videoId).filter(Boolean);
       if (videoIds.length === 0) return [];
@@ -76,7 +76,7 @@ export class YouTubeService {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!statsRes.ok) return [];
-      const statsData = await statsRes.json();
+      const statsData: any = await statsRes.json();
 
       const videos: YouTubeTopVideo[] = (statsData.items || []).map((v: any) => {
         const views = parseInt(v.statistics?.viewCount || '0');
@@ -116,7 +116,7 @@ export class YouTubeService {
         }),
       });
       if (!res.ok) return null;
-      const data = await res.json();
+      const data: any = await res.json();
       return { accessToken: data.access_token, expiresIn: data.expires_in };
     } catch {
       return null;

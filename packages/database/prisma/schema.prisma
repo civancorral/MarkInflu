@@ -226,7 +226,7 @@ model CreatorProfile {
   @@index([country])
   @@index([isAvailable])
   @@index([isVerified])
-  
+
 }
 
 enum ContentType {
@@ -286,12 +286,16 @@ model SocialAccount {
   username          String
   profileUrl        String
   
-  // OAuth (para V3 - conexión automática)
+  // OAuth
   accessToken       String?        @db.Text
   refreshToken      String?        @db.Text
   tokenExpiresAt    DateTime?
   isConnected       Boolean        @default(false)
-  
+
+  // Platform-specific IDs
+  platformUserId    String?        // ID del usuario en la plataforma
+  platformMetadata  Json?          // { igBusinessAccountId, channelId, etc. }
+
   // Métricas Actuales (denormalizadas para queries rápidos)
   followers         Int            @default(0)
   following         Int            @default(0)
@@ -300,7 +304,12 @@ model SocialAccount {
   avgLikes          Int?
   avgComments       Int?
   avgViews          Int?           // Para video platforms
-  
+
+  // Cached rich data
+  topContent        Json?          // Mejores posts/videos
+  audienceData      Json?          // Demographics
+  optimalPostingTimes Json?        // Horarios óptimos
+
   // Metadata
   lastSyncAt        DateTime?
   isVerified        Boolean        @default(false) // Verificado en la plataforma
@@ -468,7 +477,7 @@ model Campaign {
   @@index([status])
   @@index([visibility])
   @@index([applicationDeadline])
-  
+
 }
 
 enum BudgetType {

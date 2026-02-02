@@ -15,6 +15,8 @@ import {
 import { Campaign, CampaignStatus } from '@markinflu/database';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -37,7 +39,40 @@ export function CampaignCard({
   contractsCount,
 }: CampaignCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const router = useRouter();
   const status = statusConfig[campaign.status];
+
+  const handleDuplicate = async () => {
+    setShowMenu(false);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/duplicate`, { method: 'POST' });
+      if (res.ok) {
+        toast.success('Campaña duplicada');
+        router.refresh();
+      } else {
+        toast.error('Error al duplicar');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    }
+  };
+
+  const handleDelete = async () => {
+    setShowMenu(false);
+    if (!confirm('¿Estás seguro de que deseas eliminar esta campaña?')) return;
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Campaña eliminada');
+        router.refresh();
+      } else {
+        const data = await res.json();
+        toast.error(data.message || 'Error al eliminar');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    }
+  };
 
   return (
     <div className="bento-card group relative">
@@ -76,10 +111,7 @@ export function CampaignCard({
               </Link>
               <button
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent"
-                onClick={() => {
-                  // TODO: Duplicate campaign
-                  setShowMenu(false);
-                }}
+                onClick={handleDuplicate}
               >
                 <Copy className="h-4 w-4" />
                 Duplicar
@@ -87,10 +119,7 @@ export function CampaignCard({
               <div className="my-1 border-t border-border" />
               <button
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-500/10"
-                onClick={() => {
-                  // TODO: Delete campaign
-                  setShowMenu(false);
-                }}
+                onClick={handleDelete}
               >
                 <Trash2 className="h-4 w-4" />
                 Eliminar

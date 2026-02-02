@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { hash, compare } from 'bcryptjs';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
+import { EmailService } from '@/common/email/email.service';
 import { UserRole, AccountStatus } from '@markinflu/database';
 import { RegisterDto, LoginDto, RefreshTokenDto } from './dto/auth.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -39,6 +40,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private redisService: RedisService,
+    private emailService: EmailService,
   ) {}
 
   // ============================================
@@ -73,8 +75,7 @@ export class AuthService {
       },
     });
 
-    // TODO: Send verification email
-    // await this.emailService.sendVerificationEmail(user.email, user.id);
+    await this.emailService.sendVerificationEmail(user.email, user.id);
 
     // Generate tokens
     return this.generateAuthResponse(user);
@@ -236,8 +237,7 @@ export class AuthService {
       60 * 60, // 1 hour
     );
 
-    // TODO: Send reset email
-    // await this.emailService.sendPasswordResetEmail(user.email, resetToken);
+    await this.emailService.sendPasswordResetEmail(user.email, resetToken);
   }
 
   // ============================================
@@ -355,11 +355,13 @@ export class AuthService {
       },
     });
 
-    if (user) {
-      // Cache for 5 minutes
-      await this.redisService.setJson(`user:${userId}`, user, 300);
-    }
+    if (!user) return null;
 
-    return user;
+    const { passwordHash, ...safeUser } = user;
+
+    // Cache for 5 minutes
+    await this.redisService.setJson(`user:${userId}`, safeUser, 300);
+
+    return safeUser;
   }
 }

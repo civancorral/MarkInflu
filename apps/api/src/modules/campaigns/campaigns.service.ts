@@ -285,9 +285,9 @@ export class CampaignsService {
 
     // Can't update certain fields if published
     if (campaign.status === CampaignStatus.PUBLISHED) {
-      const restrictedFields = ['budgetMin', 'budgetMax', 'maxCreators'];
+      const restrictedFields = ['budgetMin', 'budgetMax', 'maxCreators'] as const;
       for (const field of restrictedFields) {
-        if (dto[field] !== undefined && dto[field] !== campaign[field]) {
+        if (dto[field] !== undefined && dto[field] !== (campaign as any)[field]) {
           throw new BadRequestException(
             `No puedes modificar ${field} en una campaña publicada`,
           );
@@ -295,13 +295,16 @@ export class CampaignsService {
       }
     }
 
+    const { brief, requirements, deliverableSpecs, budgetType, ...rest } = dto;
+
     const updated = await this.prisma.campaign.update({
       where: { id },
       data: {
-        ...dto,
-        brief: dto.brief as any,
-        requirements: dto.requirements as any,
-        deliverableSpecs: dto.deliverableSpecs as any,
+        ...rest,
+        ...(budgetType && { budgetType: budgetType as any }),
+        brief: brief as any,
+        requirements: requirements as any,
+        deliverableSpecs: deliverableSpecs as any,
       },
       include: {
         brandProfile: {
@@ -351,7 +354,7 @@ export class CampaignsService {
 
     return this.prisma.campaign.update({
       where: { id },
-      data: { status: CampaignStatus.CLOSED },
+      data: { status: CampaignStatus.CANCELLED },
     });
   }
 

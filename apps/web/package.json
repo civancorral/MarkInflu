@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.980.0",
+    "@aws-sdk/s3-request-presigner": "^3.980.0",
     "@hookform/resolvers": "^3.3.4",
     "@markinflu/database": "workspace:*",
     "@markinflu/types": "workspace:*",
@@ -43,7 +45,9 @@
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.50.1",
+    "socket.io-client": "^4.8.3",
     "sonner": "^1.4.3",
+    "stripe": "^14.18.0",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.22.4",

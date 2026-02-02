@@ -3,6 +3,7 @@
   "compilerOptions": {
     "baseUrl": "./",
     "outDir": "./dist",
+    "strictPropertyInitialization": false,
     "paths": {
       "@/*": ["src/*"],
       "@/modules/*": ["src/modules/*"],

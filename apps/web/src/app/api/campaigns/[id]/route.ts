@@ -83,3 +83,49 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'BRAND') {
+      return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
+    }
+
+    const brandProfile = await prisma.brandProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
+    if (!brandProfile) {
+      return NextResponse.json({ message: 'Perfil no encontrado' }, { status: 404 });
+    }
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: params.id },
+      select: { brandProfileId: true, status: true, _count: { select: { contracts: true } } },
+    });
+
+    if (!campaign || campaign.brandProfileId !== brandProfile.id) {
+      return NextResponse.json({ message: 'Campaña no encontrada' }, { status: 404 });
+    }
+
+    if (campaign._count.contracts > 0) {
+      return NextResponse.json(
+        { message: 'No se puede eliminar una campaña con contratos activos' },
+        { status: 400 },
+      );
+    }
+
+    await prisma.campaign.delete({ where: { id: params.id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting campaign:', error);
+    return NextResponse.json(
+      { message: error.message || 'Error al eliminar campaña' },
+      { status: 500 },
+    );
+  }
+}

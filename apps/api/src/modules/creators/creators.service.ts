@@ -117,15 +117,6 @@ export class CreatorsService {
         reviews: {
           take: 5,
           orderBy: { createdAt: 'desc' },
-          include: {
-            reviewer: {
-              select: {
-                brandProfile: {
-                  select: { companyName: true, logoUrl: true },
-                },
-              },
-            },
-          },
         },
         _count: {
           select: {
@@ -307,7 +298,7 @@ export class CreatorsService {
       );
       const avgEngagement =
         profile.socialAccounts.reduce(
-          (sum, acc) => sum + (acc.engagementRate || 0),
+          (sum, acc) => sum + (Number(acc.engagementRate) || 0),
           0,
         ) / (profile.socialAccounts.length || 1);
 

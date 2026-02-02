@@ -54,25 +54,43 @@ export async function POST(
       ? (deliverable.versions[0]?.versionNumber || 0) + 1
       : 1;
 
-    // Create new version
-    const version = await prisma.deliverableVersion.create({
-      data: {
-        deliverableId,
-        versionNumber: nextVersionNumber,
-        fileUrl,
-        fileName,
-        fileSize,
-        mimeType,
-      },
-    });
-
-    // Update deliverable status to DRAFT if it's PENDING
-    if (deliverable.status === 'PENDING') {
-      await prisma.deliverable.update({
-        where: { id: deliverableId },
-        data: { status: 'DRAFT' },
-      });
+    // Block uploads for certain statuses
+    const blocked = ['APPROVED', 'PUBLISHED', 'IN_REVIEW'];
+    if (blocked.includes(deliverable.status)) {
+      return NextResponse.json(
+        { message: `No puedes subir archivos en estado ${deliverable.status}` },
+        { status: 400 }
+      );
     }
+
+    // Create new version and update deliverable in transaction
+    const [version] = await prisma.$transaction([
+      prisma.deliverableVersion.create({
+        data: {
+          deliverableId,
+          versionNumber: nextVersionNumber,
+          fileUrl,
+          fileName,
+          fileSize,
+          mimeType,
+          videoProvider: body.videoProvider || null,
+          videoAssetId: body.videoAssetId || null,
+          videoPlaybackId: body.videoPlaybackId || null,
+          videoDuration: duration || null,
+          videoThumbnailUrl: thumbnailUrl || null,
+          metadata: body.metadata || null,
+          creatorNotes: body.creatorNotes || null,
+          status: 'SUBMITTED',
+        },
+      }),
+      prisma.deliverable.update({
+        where: { id: deliverableId },
+        data: {
+          status: 'DRAFT',
+          currentVersionId: null, // Will be set after version is created
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,

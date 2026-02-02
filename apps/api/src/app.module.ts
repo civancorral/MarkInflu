@@ -6,6 +6,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 // Core Modules
 import { PrismaModule } from './common/prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
+import { EmailModule } from './common/email/email.module';
 
 // Feature Modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -60,6 +61,7 @@ import { UploadModule } from './modules/upload/upload.module';
     // Core
     PrismaModule,
     RedisModule,
+    EmailModule,
 
     // Features
     AuthModule,

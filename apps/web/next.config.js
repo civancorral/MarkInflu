@@ -1,32 +1,31 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
   transpilePackages: ['@markinflu/database', '@markinflu/types'],
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.cloudinary.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.mux.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'avatars.githubusercontent.com',
-      },
-    ],
-  },
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '2mb',
     },
   },
-};
+  images: {
+    remotePatterns: [
+      // S3/MinIO/R2 storage
+      { protocol: 'https', hostname: '**.amazonaws.com' },
+      { protocol: 'https', hostname: '**.r2.cloudflarestorage.com' },
+      { protocol: 'http', hostname: 'localhost', port: '9000' },
+      // Social platforms
+      { protocol: 'https', hostname: '**.cdninstagram.com' },
+      { protocol: 'https', hostname: '**.googleusercontent.com' },
+      { protocol: 'https', hostname: '**.ggpht.com' },
+      { protocol: 'https', hostname: '**.ytimg.com' },
+      { protocol: 'https', hostname: '**.fbcdn.net' },
+      { protocol: 'https', hostname: '**.twimg.com' },
+      { protocol: 'https', hostname: '**.tiktokcdn.com' },
+      // CDN (configurable)
+      ...(process.env.CDN_URL
+        ? [{ protocol: 'https', hostname: new URL(process.env.CDN_URL).hostname }]
+        : []),
+    ],
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

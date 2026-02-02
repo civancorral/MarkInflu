@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, BadgeCheck, MapPin, Instagram, Youtube, ExternalLink } from 'lucide-react';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, cn } from '@/lib/utils';
 import type { CreatorProfile, SocialAccount } from '@markinflu/database';
 
 interface CreatorCardProps {
   creator: CreatorProfile & {
     socialAccounts: SocialAccount[];
   };
+  isFavorite?: boolean;
+  onToggleFavorite?: (creatorProfileId: string) => void;
 }
 
 const platformIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -17,7 +19,7 @@ const platformIcons: Record<string, React.ComponentType<{ className?: string }>>
   YOUTUBE: Youtube,
 };
 
-export function CreatorCard({ creator }: CreatorCardProps) {
+export function CreatorCard({ creator, isFavorite, onToggleFavorite }: CreatorCardProps) {
   const totalFollowers = creator.socialAccounts.reduce(
     (sum, acc) => sum + acc.followers,
     0
@@ -53,15 +55,20 @@ export function CreatorCard({ creator }: CreatorCardProps) {
         )}
 
         {/* Favorite Button */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            // TODO: Implement favorite functionality
-          }}
-          className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-background hover:text-red-500"
-        >
-          <Heart className="h-4 w-4" />
-        </button>
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              onToggleFavorite(creator.id);
+            }}
+            className={cn(
+              'absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background',
+              isFavorite ? 'text-red-500' : 'text-muted-foreground hover:text-red-500',
+            )}
+          >
+            <Heart className={cn('h-4 w-4', isFavorite && 'fill-current')} />
+          </button>
+        )}
       </div>
 
       {/* Avatar */}

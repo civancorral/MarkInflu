@@ -1,6 +1,7 @@
 'use client';
 
-import { Instagram, Youtube, CheckCircle, Link as LinkIcon, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { Instagram, Youtube, CheckCircle, Link as LinkIcon, Clock, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -14,6 +15,9 @@ interface SocialAccount {
   following?: number;
   postsCount?: number;
   engagementRate?: string;
+  avgLikes?: number | null;
+  avgComments?: number | null;
+  avgViews?: number | null;
   isConnected: boolean;
   isVerified: boolean;
   lastSyncAt?: Date | string | null;
@@ -75,6 +79,8 @@ export function SocialAccountsManager({
   onConnect,
   onDisconnect,
 }: SocialAccountsManagerProps) {
+  const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
+
   const formatFollowers = (count: number) => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
@@ -84,14 +90,13 @@ export function SocialAccountsManager({
   const formatDate = (date?: Date | string | null) => {
     if (!date) return null;
     const d = new Date(date);
-    return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
   const handleConnect = (platform: string) => {
     if (onConnect) {
       onConnect(platform);
     } else {
-      // Redirigir a la API OAuth correspondiente
       if (platform === 'INSTAGRAM') {
         window.location.href = '/api/auth/oauth/instagram';
       } else if (platform === 'YOUTUBE') {
@@ -112,7 +117,41 @@ export function SocialAccountsManager({
     }
   };
 
-  // Get all available platforms
+  const handleSync = async (platform: string) => {
+    setSyncingPlatform(platform);
+    try {
+      const res = await fetch(`/api/social/sync/${platform}`, { method: 'POST' });
+      if (res.ok) {
+        toast.success(`${platform} sincronizado correctamente`);
+        window.location.reload();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.message || 'Error al sincronizar');
+      }
+    } catch {
+      toast.error('Error al sincronizar');
+    } finally {
+      setSyncingPlatform(null);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    setSyncingPlatform('ALL');
+    try {
+      const res = await fetch('/api/social/sync-all', { method: 'POST' });
+      if (res.ok) {
+        toast.success('Todas las cuentas sincronizadas');
+        window.location.reload();
+      } else {
+        toast.error('Error al sincronizar');
+      }
+    } catch {
+      toast.error('Error al sincronizar');
+    } finally {
+      setSyncingPlatform(null);
+    }
+  };
+
   const allPlatforms = Object.keys(PLATFORM_CONFIG) as Array<keyof typeof PLATFORM_CONFIG>;
   const connectedPlatforms = new Set(socialAccounts.map(account => account.platform));
   const availablePlatforms = allPlatforms.filter(platform => !connectedPlatforms.has(platform));
@@ -121,6 +160,21 @@ export function SocialAccountsManager({
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Redes Sociales</h3>
+        {editable && socialAccounts.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncAll}
+            disabled={syncingPlatform !== null}
+          >
+            {syncingPlatform === 'ALL' ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Sincronizar todo
+          </Button>
+        )}
       </div>
 
       {/* Connected Accounts */}
@@ -138,12 +192,10 @@ export function SocialAccountsManager({
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3 flex-1">
-                  {/* Platform Icon */}
                   <div className={`p-3 rounded-xl ${config.bgColor}`}>
                     <PlatformIcon className={`w-6 h-6 ${config.textColor}`} />
                   </div>
 
-                  {/* Account Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold text-foreground">
@@ -195,13 +247,22 @@ export function SocialAccountsManager({
                           <p className="text-xs text-muted-foreground">engagement</p>
                         </div>
                       )}
+
+                      {account.avgViews != null && account.avgViews > 0 && (
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">
+                            {formatFollowers(account.avgViews)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">avg. views</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Last Sync */}
                     {account.lastSyncAt && (
                       <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        <span>Última actualización: {formatDate(account.lastSyncAt)}</span>
+                        <span>Última sincronización: {formatDate(account.lastSyncAt)}</span>
                       </div>
                     )}
                   </div>
@@ -211,13 +272,27 @@ export function SocialAccountsManager({
                 {editable && (
                   <div className="flex flex-col gap-2">
                     {account.isConnected && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDisconnect(account.platform)}
-                      >
-                        Desconectar
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSync(account.platform)}
+                          disabled={syncingPlatform !== null}
+                        >
+                          {syncingPlatform === account.platform ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDisconnect(account.platform)}
+                        >
+                          Desconectar
+                        </Button>
+                      </>
                     )}
                   </div>
                 )}

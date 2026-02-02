@@ -23,6 +23,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { SocialModule } from './modules/social/social.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { UploadModule } from './modules/upload/upload.module';
     NotificationsModule,
     WebhooksModule,
     UploadModule,
+    SocialModule,
   ],
 })
 export class AppModule {}

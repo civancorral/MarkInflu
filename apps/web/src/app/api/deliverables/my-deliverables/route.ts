@@ -86,8 +86,8 @@ export async function GET(req: NextRequest) {
       dueDate: deliverable.dueDate,
       submittedAt: deliverable.submittedAt,
       approvedAt: deliverable.approvedAt,
-      rejectedAt: deliverable.rejectedAt,
-      rejectionReason: deliverable.rejectionReason,
+      publishedAt: deliverable.publishedAt,
+      publishedUrl: deliverable.publishedUrl,
       contract: {
         id: deliverable.contract.id,
         campaign: {
@@ -104,8 +104,9 @@ export async function GET(req: NextRequest) {
             id: deliverable.versions[0].id,
             versionNumber: deliverable.versions[0].versionNumber,
             fileUrl: deliverable.versions[0].fileUrl,
-            thumbnailUrl: deliverable.versions[0].thumbnailUrl,
-            uploadedAt: deliverable.versions[0].uploadedAt,
+            videoThumbnailUrl: deliverable.versions[0].videoThumbnailUrl,
+            submittedAt: deliverable.versions[0].submittedAt,
+            status: deliverable.versions[0].status,
           }
         : null,
     }));

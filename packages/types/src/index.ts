@@ -7,39 +7,8 @@ export * from './user';
 // Campaign types
 export * from './campaign';
 
-// Re-export database enums for convenience
-export {
-  UserRole,
-  AccountStatus,
-  StripeConnectStatus,
-  CompanySize,
-  ContentType,
-  SocialPlatform,
-  SnapshotPeriod,
-  CampaignStatus,
-  CampaignVisibility,
-  BudgetType,
-  InvitationStatus,
-  ApplicationStatus,
-  ContractStatus,
-  MilestoneStatus,
-  MilestoneTrigger,
-  DeliverableStatus,
-  VideoProvider,
-  VideoStatus,
-  VersionStatus,
-  AnnotationType,
-  CommentType,
-  CommentPriority,
-  EscrowStatus,
-  PaymentStatus,
-  PaymentType,
-  DisputeStatus,
-  DisputeReason,
-  ChatType,
-  MessageContentType,
-  NotificationType,
-} from '@markinflu/database';
+// Enums
+export * from './enums';
 
 // Common API response types
 export interface ApiResponse<T = unknown> {

@@ -42,22 +42,6 @@ export async function GET(
           orderBy: {
             versionNumber: 'desc',
           },
-          include: {
-            comments: {
-              orderBy: {
-                createdAt: 'asc',
-              },
-              include: {
-                author: {
-                  select: {
-                    id: true,
-                    email: true,
-                    role: true,
-                  },
-                },
-              },
-            },
-          },
         },
       },
     });
@@ -89,8 +73,8 @@ export async function GET(
       dueDate: deliverable.dueDate,
       submittedAt: deliverable.submittedAt,
       approvedAt: deliverable.approvedAt,
-      rejectedAt: deliverable.rejectedAt,
-      rejectionReason: deliverable.rejectionReason,
+      publishedAt: deliverable.publishedAt,
+      publishedUrl: deliverable.publishedUrl,
       contract: {
         id: deliverable.contract.id,
         campaign: {
@@ -110,20 +94,13 @@ export async function GET(
         fileName: version.fileName,
         fileSize: version.fileSize,
         mimeType: version.mimeType,
-        thumbnailUrl: version.thumbnailUrl,
-        duration: version.duration,
-        uploadedAt: version.uploadedAt,
-        comments: version.comments.map((comment) => ({
-          id: comment.id,
-          content: comment.content,
-          timestamp: comment.timestamp,
-          createdAt: comment.createdAt,
-          author: {
-            id: comment.author.id,
-            email: comment.author.email,
-            role: comment.author.role,
-          },
-        })),
+        videoThumbnailUrl: version.videoThumbnailUrl,
+        videoDuration: version.videoDuration,
+        videoPlaybackId: version.videoPlaybackId,
+        status: version.status,
+        submittedAt: version.submittedAt,
+        reviewedAt: version.reviewedAt,
+        creatorNotes: version.creatorNotes,
       })),
     };
 

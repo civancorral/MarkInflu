@@ -3,7 +3,7 @@ import {
   ContentType,
   SocialPlatform,
   CompanySize,
-} from '@markinflu/database';
+} from './enums';
 
 // ============================================
 // CREATOR PROFILE TYPES

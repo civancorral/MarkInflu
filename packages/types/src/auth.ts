@@ -1,4 +1,4 @@
-import { UserRole, AccountStatus } from '@markinflu/database';
+import { UserRole, AccountStatus } from './enums';
 
 // ============================================
 // AUTH TYPES

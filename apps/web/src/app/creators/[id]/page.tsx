@@ -65,13 +65,18 @@ export default async function CreatorProfilePage({ params }: Props) {
   const avgEngagement =
     profile.socialAccounts.length > 0
       ? profile.socialAccounts.reduce(
-          (sum, acc) => sum + (acc.engagementRate || 0),
+          (sum, acc) => sum + (Number(acc.engagementRate) || 0),
           0
         ) / profile.socialAccounts.length
       : 0;
 
   const enrichedProfile = {
     ...profile,
+    minimumBudget: profile.minimumBudget ? Number(profile.minimumBudget) : 0,
+    socialAccounts: profile.socialAccounts.map(acc => ({
+      ...acc,
+      engagementRate: Number(acc.engagementRate) || 0,
+    })),
     totalFollowers,
     avgEngagementRate: Math.round(avgEngagement * 100) / 100,
     avgRating: 0,

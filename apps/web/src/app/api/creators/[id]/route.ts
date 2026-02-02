@@ -40,7 +40,7 @@ export async function GET(
     const avgEngagement =
       profile.socialAccounts.length > 0
         ? profile.socialAccounts.reduce(
-            (sum, acc) => sum + (acc.engagementRate || 0),
+            (sum, acc) => sum + (Number(acc.engagementRate) || 0),
             0
           ) / profile.socialAccounts.length
         : 0;

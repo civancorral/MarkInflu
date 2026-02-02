@@ -5,7 +5,7 @@ import {
   ApplicationStatus,
   ContentType,
   SocialPlatform,
-} from '@markinflu/database';
+} from './enums';
 
 // ============================================
 // CAMPAIGN TYPES

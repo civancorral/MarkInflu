@@ -75,10 +75,8 @@ export async function GET(
       endDate: contract.endDate,
       terms: contract.terms,
       createdAt: contract.createdAt,
-      signedAt: contract.signedAt,
-      completedAt: contract.completedAt,
-      cancelledAt: contract.cancelledAt,
-      cancellationReason: contract.cancellationReason,
+      brandSignedAt: contract.brandSignedAt,
+      creatorSignedAt: contract.creatorSignedAt,
       campaign: {
         id: contract.campaign.id,
         title: contract.campaign.title,

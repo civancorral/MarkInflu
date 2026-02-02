@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@markinflu/database';
-import { CampaignStatus, CampaignVisibility } from '@prisma/client';
+import { CampaignStatus, CampaignVisibility } from '@markinflu/types';
 
 export async function GET(req: NextRequest) {
   try {
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
         const creatorNiches = [
           creatorProfile.primaryNiche,
           ...(creatorProfile.secondaryNiches || []),
-        ].filter(Boolean);
+        ].filter((n): n is string => Boolean(n));
 
         const hasMatchingNiche = requirements.niches.some((reqNiche: string) =>
           creatorNiches.some((creatorNiche) =>
